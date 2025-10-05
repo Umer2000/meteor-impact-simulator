@@ -1,11 +1,16 @@
-// vite.config.js
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
 export default defineConfig({
-  root: 'frontend',
   plugins: [react()],
-  build: {
-    outDir: '../dist', // build output will go to root/dist
+  root: '.', // project root
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './frontend/src')
+    }
   },
+  build: {
+    outDir: 'dist'
+  }
 })
