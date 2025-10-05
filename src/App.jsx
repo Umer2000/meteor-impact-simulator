@@ -25,7 +25,7 @@ const App = () => {
 
     // World map background
     const bg = new Image();
-    bg.src = "/world-map.jpg";
+    bg.src = "/world-map.png";
     bg.onload = () => {
       bgCtx.drawImage(bg, 0, 0, width, height);
     };
