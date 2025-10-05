@@ -3,9 +3,12 @@ import React, { useRef, useEffect, useState } from "react";
 const App = () => {
   const bgCanvasRef = useRef(null);
   const overlayCanvasRef = useRef(null);
-  const [meteors, setMeteors] = useState([]);
-  const [explosions, setExplosions] = useState([]);
-  const [impacts, setImpacts] = useState([]);
+
+  // useRef for simulation arrays (won’t trigger re-renders)
+  const meteorsRef = useRef([]);
+  const explosionsRef = useRef([]);
+  const impactsRef = useRef([]);
+
   const [running, setRunning] = useState(true);
   const meteorIntervalRef = useRef(null);
 
@@ -21,43 +24,34 @@ const App = () => {
     bgCanvas.height = overlayCanvas.height = height;
 
     // World map background
-    const worldMap = "/world-map.jpg";
     const bg = new Image();
-    bg.src = worldMap;
+    bg.src = "/world-map.jpg";
     bg.onload = () => {
       bgCtx.drawImage(bg, 0, 0, width, height);
     };
 
-    // Preload meteors for instant demo effect
-    for (let i = 0; i < 20; i++) {
-      setMeteors((prev) => [
-        ...prev,
-        {
-          x: Math.random() * width,
-          y: Math.random() * 0.8 * height,
-          vx: Math.random() * 2 - 1,
-          vy: 2 + Math.random() * 3,
-          radius: 5 + Math.random() * 3,
-        },
-      ]);
-    }
+    // Preload meteors
+    meteorsRef.current = Array.from({ length: 20 }).map(() => ({
+      x: Math.random() * width,
+      y: Math.random() * 0.8 * height,
+      vx: Math.random() * 2 - 1,
+      vy: 2 + Math.random() * 3,
+      radius: 5 + Math.random() * 3,
+    }));
 
     const createMeteor = () => {
       if (!running) return;
-      setMeteors((prev) => [
-        ...prev,
-        {
-          x: Math.random() * width,
-          y: 0,
-          vx: Math.random() * 2 - 1,
-          vy: 2 + Math.random() * 3,
-          radius: 5 + Math.random() * 3,
-        },
-      ]);
+      meteorsRef.current.push({
+        x: Math.random() * width,
+        y: 0,
+        vx: Math.random() * 2 - 1,
+        vy: 2 + Math.random() * 3,
+        radius: 5 + Math.random() * 3,
+      });
     };
 
     const createExplosion = (x, y) => {
-      setImpacts((prev) => [...prev, { x, y }]);
+      impactsRef.current.push({ x, y });
       const particles = [];
       for (let i = 0; i < 50; i++) {
         const angle = Math.random() * Math.PI * 2;
@@ -73,7 +67,7 @@ const App = () => {
           color: { r: 255, g: 200, b: 0 },
         });
       }
-      setExplosions((prev) => [...prev, { particles }]);
+      explosionsRef.current.push({ particles });
     };
 
     const getExplosionColor = (life) => {
@@ -84,7 +78,7 @@ const App = () => {
     };
 
     const drawHeatmap = () => {
-      // Past impact heatmap
+      const impacts = impactsRef.current;
       impacts.forEach((impact) => {
         const gradient = ctx.createRadialGradient(
           impact.x,
@@ -125,22 +119,27 @@ const App = () => {
       ctx.fillText("High", legendX + 30, legendY + 10);
       ctx.fillText("Medium", legendX + 30, legendY + 55);
       ctx.fillText("Low", legendX + 30, legendY + 105);
-
-      // Impact counter
       ctx.fillStyle = "white";
       ctx.font = "18px Arial";
-      ctx.fillText(`Total Impacts: ${impacts.length}`, legendX, legendY + legendHeight + 40);
+      ctx.fillText(
+        `Total Impacts: ${impacts.length}`,
+        legendX,
+        legendY + legendHeight + 40
+      );
 
-      // --- Phase 9: AI-based Future Impact Prediction ---
+      // Future risk heatmap
       const gridSize = 50;
       const cols = Math.ceil(width / gridSize);
       const rows = Math.ceil(height / gridSize);
-      const futureRisk = Array(cols).fill(0).map(() => Array(rows).fill(0));
+      const futureRisk = Array(cols)
+        .fill(0)
+        .map(() => Array(rows).fill(0));
 
       impacts.forEach(({ x, y }) => {
         const gx = Math.floor(x / gridSize);
         const gy = Math.floor(y / gridSize);
-        futureRisk[gx][gy] += 1;
+        if (futureRisk[gx] && futureRisk[gx][gy] !== undefined)
+          futureRisk[gx][gy] += 1;
       });
 
       for (let i = 0; i < cols; i++) {
@@ -158,43 +157,39 @@ const App = () => {
       ctx.clearRect(0, 0, width, height);
 
       if (running) {
-        setMeteors((prevMeteors) =>
-          prevMeteors.flatMap((m) => {
-            const newMeteor = { ...m, x: m.x + m.vx, y: m.y + m.vy };
-            if (newMeteor.y > height * 0.8) {
-              createExplosion(newMeteor.x, newMeteor.y);
-              return [];
-            }
-            return [newMeteor];
-          })
-        );
+        meteorsRef.current = meteorsRef.current.flatMap((m) => {
+          if (!m) return [];
+          const newMeteor = { ...m, x: m.x + m.vx, y: m.y + m.vy };
+          if (newMeteor.y > height * 0.8) {
+            createExplosion(newMeteor.x, newMeteor.y);
+            return [];
+          }
+          return [newMeteor];
+        });
       }
 
-      meteors.forEach((m) => {
+      meteorsRef.current.forEach((m) => {
         ctx.beginPath();
         ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
         ctx.fillStyle = "white";
         ctx.fill();
       });
 
-      setExplosions((prevExplosions) =>
-        prevExplosions
-          .flatMap((expl) => {
-            expl.particles.forEach((p) => {
-              p.x += p.vx;
-              p.y += p.vy;
-              p.vy += 0.05;
-              p.radius *= 0.96;
-              p.opacity *= 0.96;
-              p.color = getExplosionColor(p.life);
-              p.life += 1;
-            });
-            const alive = expl.particles.filter((p) => p.opacity > 0.05);
-            return alive.length > 0 ? [{ ...expl, particles: alive }] : [];
-          })
-      );
+      explosionsRef.current = explosionsRef.current.flatMap((expl) => {
+        expl.particles.forEach((p) => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.05;
+          p.radius *= 0.96;
+          p.opacity *= 0.96;
+          p.color = getExplosionColor(p.life);
+          p.life += 1;
+        });
+        const alive = expl.particles.filter((p) => p.opacity > 0.05);
+        return alive.length > 0 ? [{ ...expl, particles: alive }] : [];
+      });
 
-      explosions.forEach((expl) => {
+      explosionsRef.current.forEach((expl) => {
         expl.particles.forEach((p) => {
           const gradient = ctx.createRadialGradient(
             p.x,
@@ -224,15 +219,15 @@ const App = () => {
     update();
 
     return () => clearInterval(meteorIntervalRef.current);
-  }, [meteors, explosions, impacts, running]);
+  }, [running]);
 
   const handleStart = () => setRunning(true);
   const handlePause = () => setRunning(false);
   const handleReset = () => {
     setRunning(false);
-    setMeteors([]);
-    setExplosions([]);
-    setImpacts([]);
+    meteorsRef.current = [];
+    explosionsRef.current = [];
+    impactsRef.current = [];
   };
 
   const buttonStyle = {
