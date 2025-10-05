@@ -2,12 +2,12 @@
   "name": "meteor-impact-simulator",
   "version": "1.0.0",
   "private": true,
-  "scripts": {
+ "scripts": {
   "dev": "vite",
-  "build": "npx vite build",
+  "build": "npx --no-install vite build",
   "preview": "vite preview"
 },
-  "dependencies": {
+   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
