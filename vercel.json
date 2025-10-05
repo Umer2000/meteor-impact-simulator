@@ -1,6 +1,5 @@
 {
-  "buildCommand": "npx react-scripts build",
-  "outputDirectory": "build",
-  "framework": null,
-  "installCommand": "npm install"
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
+  "framework": null
 }
